@@ -18,6 +18,9 @@ export default function App() {
     h: number;
   } | null>(null);
 
+  const lastInferenceTime = useRef(0);
+  const INFERENCE_INTERVAL_MS = 1200; // tune: 600 = faster response, 1200 = smoother (less CPU/GPU load)
+
   // @ts-ignore
   const ort = (window as any).ort;
 
@@ -76,26 +79,72 @@ export default function App() {
   };
 
   // Run inference continuously
-  const runLiveInference = async () => {
-    if (!sessionRef.current || !videoRef.current) return;
-
-    const tensor = captureFrame(videoRef.current);
-    const inputName = sessionRef.current.inputNames[0];
-    const feeds: Record<string, any> = { [inputName]: tensor };
-
-    try {
-      const results = await sessionRef.current.run(feeds);
-      const outputTensor = results[sessionRef.current.outputNames[0]];
-
-      // Log for debugging
-      console.log("Output dims:", outputTensor.dims); // Should be something like [1, 5, 8400]
-
-      drawBoxes(videoRef.current, outputTensor);
-    } catch (err) {
-      console.error("INFERENCE ERROR:", err);
+  const runLiveInference = () => {
+    if (!videoRef.current) {
+      requestAnimationFrame(runLiveInference);
+      return;
     }
 
-    requestAnimationFrame(runLiveInference); // loop
+    // ────────────────────────────────────────────────
+    // Always keep video smooth: redraw every frame
+    // ────────────────────────────────────────────────
+    if (canvasRef.current && videoRef.current.videoWidth > 0) {
+      const canvas = canvasRef.current;
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+
+        // Re-draw last known good overlay (very cheap)
+        if (lastBoxRef.current && lastPlateTextRef.current) {
+          const { x, y, w, h } = lastBoxRef.current;
+          ctx.strokeStyle = "lime";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(x, y, w, h);
+
+          ctx.fillStyle = "lime";
+          ctx.font = "bold 24px Arial";
+          ctx.fillText(lastPlateTextRef.current, x, y - 12);
+
+          if (lastConfidenceRef.current !== null) {
+            ctx.font = "14px Arial";
+            ctx.fillText(
+              `conf: ${lastConfidenceRef.current.toFixed(0)}%`,
+              x,
+              y - 28,
+            );
+          }
+        }
+      }
+    }
+
+    // Only run heavy stuff occasionally
+    const now = performance.now();
+    if (now - lastInferenceTime.current >= INFERENCE_INTERVAL_MS) {
+      lastInferenceTime.current = now;
+
+      if (sessionRef.current && videoRef.current) {
+        // Only capture frame when we actually need it
+        const tensor = captureFrame(videoRef.current);
+
+        const feeds = { [sessionRef.current.inputNames[0]]: tensor };
+        const video = videoRef.current; // capture current video ref for closure
+
+        sessionRef.current
+          .run(feeds)
+          .then((results: Record<string, any>) => {
+            const outputTensor = results[sessionRef.current.outputNames[0]];
+            // Reuse your existing drawBoxes logic, but it now only updates refs
+            drawBoxes(video, outputTensor);
+          })
+          .catch((err: any) => {
+            console.error("Inference failed:", err);
+          });
+      }
+    }
+
+    requestAnimationFrame(runLiveInference);
   };
 
   // Draw bounding boxes with proper post-processing and NMS
