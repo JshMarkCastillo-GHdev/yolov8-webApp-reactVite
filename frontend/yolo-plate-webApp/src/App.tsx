@@ -1,5 +1,6 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import Tesseract, { PSM } from "tesseract.js";
+import logo from "./assets/Ultralytics YOLOv8.png";
 
 type OrtSession = any; // from CDN
 
@@ -8,6 +9,12 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sessionRef = useRef<OrtSession | null>(null);
   const workerRef = useRef<Tesseract.Worker | null>(null);
+
+  // new state for theme and frontend status
+  const [darkMode, setDarkMode] = useState(false);
+  const [status, setStatus] = useState("initialising…");
+  const [detectedPlate, setDetectedPlate] = useState<string | null>(null);
+  const [detectedConf, setDetectedConf] = useState<number | null>(null);
 
   const lastPlateTextRef = useRef<string | null>(null);
   const lastConfidenceRef = useRef<number | null>(null);
@@ -23,19 +30,20 @@ export default function App() {
 
   // @ts-ignore
   const ort = (window as any).ort;
-
   if (ort) ort.env.wasm.numThreads = 1; // mobile-safe
 
   // Load YOLO model once
   const loadModel = async () => {
     if (!sessionRef.current) {
       try {
+        setStatus("loading model…");
         sessionRef.current =
           await ort.InferenceSession.create("/models/best.onnx");
         console.log("Model loaded");
-        console.log("Input names:", sessionRef.current.inputNames);
+        setStatus("model loaded");
       } catch (err) {
         console.error("MODEL LOAD ERROR:", err);
+        setStatus("model load error");
       }
     }
   };
@@ -51,8 +59,10 @@ export default function App() {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
+      setStatus("camera started");
     } catch (err) {
       console.error("Camera error:", err);
+      setStatus("camera error");
     }
   };
 
@@ -270,6 +280,7 @@ export default function App() {
             console.log("OCR raw result:", { text, confidence });
             console.log("Cleaned text:", cleanText);
 
+            // Tune these thresholds based on your needs and model performance, 50 = accuracy, 30 = testing purpose (accept more false positives)
             if (cleanText.length >= 5 && confidence >= 30) {
               console.log("LP: " + cleanText);
 
@@ -282,6 +293,10 @@ export default function App() {
                 w: scaledW,
                 h: scaledH,
               };
+
+              // update state for UI
+              setDetectedPlate(cleanText);
+              setDetectedConf(confidence);
 
               ctx.save();
               ctx.fillStyle = "lime";
@@ -366,6 +381,11 @@ export default function App() {
 
   // Start camera and inference on mount
   useEffect(() => {
+    document.documentElement.setAttribute(
+      "data-theme",
+      darkMode ? "dark" : "light",
+    );
+
     startCamera().then(() => loadModel().then(runLiveInference));
 
     (async () => {
@@ -399,19 +419,140 @@ export default function App() {
     return () => {
       workerRef.current?.terminate();
     };
-  }, []);
+  }, [darkMode]);
 
   return (
-    <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center p-5 gap-4">
-      <h1 className="text-2xl font-bold">Live YOLO License Plate Detector</h1>
+    <div className="min-h-screen flex flex-col bg-base-200">
+      <header className="navbar bg-base-100 shadow-md mb-4">
+        <div className="flex-1 px-2 mx-2">
+          <span className="text-lg font-bold">YOLO License Plate Detector</span>
+        </div>
+        <div className="flex-none space-x-2">
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() =>
+              window.open("https://github.com/JshMarkCastillo-GHdev", "_blank")
+            }
+          >
+            GitHub
+          </button>
 
-      <div className="relative w-full max-w-md">
-        <video ref={videoRef} className="w-full rounded-lg" playsInline muted />
-        <canvas
-          ref={canvasRef}
-          className="absolute top-0 left-0 w-full h-full pointer-events-none"
-        />
-      </div>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setDarkMode((d) => !d)}
+            title="Toggle dark/light mode"
+          >
+            {darkMode ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                {/* sun icon */}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m13.06-6.06l-.7.7M6.34 17.66l-.7.7m13.06 0l-.7-.7M6.34 6.34l-.7-.7M12 5a7 7 0 100 14 7 7 0 000-14z"
+                />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                {/* moon icon */}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
+                />
+              </svg>
+            )}
+          </button>
+
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => window.location.reload()}
+          >
+            Reset
+          </button>
+        </div>
+      </header>
+
+      <main className="grow container mx-auto px-4">
+        <div className="card bg-base-100 shadow-xl w-full max-w-3xl mx-auto">
+          <div className="card-body">
+            <h2 className="card-title">Live detection</h2>
+            <p className="text-sm text-gray-500 mb-2">{status}</p>
+
+            <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+              <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                playsInline
+                muted
+              />
+              <canvas
+                ref={canvasRef}
+                className="absolute top-0 left-0 w-full h-full pointer-events-none"
+              />
+            </div>
+
+            <div className="mt-4">
+              {detectedPlate ? (
+                <div className="alert alert-success shadow-lg">
+                  <div>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="stroke-current shrink-0 h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span>
+                      {detectedPlate}{" "}
+                      {detectedConf !== null &&
+                        `(${detectedConf.toFixed(0)}% confidence)`}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  No plate recognised yet.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer className="footer p-4 bg-base-100 text-base-content">
+        <div className="items-center grid-flow-col">
+          <p className="ml-2 text-lg font-semibold">Powered By</p>
+
+          <a
+            href="https://yolov8.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-ghost btn-sm ml-2 bg-white"
+          >
+            <img src={logo} alt="Ultralytics YOLOv8" className="w-20 h-6" />
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }
