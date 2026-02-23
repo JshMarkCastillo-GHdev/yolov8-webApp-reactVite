@@ -85,9 +85,7 @@ export default function App() {
       return;
     }
 
-    // ────────────────────────────────────────────────
     // Always keep video smooth: redraw every frame
-    // ────────────────────────────────────────────────
     if (canvasRef.current && videoRef.current.videoWidth > 0) {
       const canvas = canvasRef.current;
       canvas.width = videoRef.current.videoWidth;
@@ -119,7 +117,7 @@ export default function App() {
       }
     }
 
-    // Only run heavy stuff occasionally
+    // Only run heavy stuff occasionally, 1200 MS = Smooth, 800 = faster response but more CPU/GPU load.
     const now = performance.now();
     if (now - lastInferenceTime.current >= INFERENCE_INTERVAL_MS) {
       lastInferenceTime.current = now;
@@ -135,7 +133,7 @@ export default function App() {
           .run(feeds)
           .then((results: Record<string, any>) => {
             const outputTensor = results[sessionRef.current.outputNames[0]];
-            // Reuse your existing drawBoxes logic, but it now only updates refs
+            // Reuse existing drawBoxes logic, but it now only updates refs
             drawBoxes(video, outputTensor);
           })
           .catch((err: any) => {
@@ -324,10 +322,10 @@ export default function App() {
       }
     }
 
-    // If no detection → just keep the clean video frame (already drawn)
+    // If no detection, just keep the clean video frame (already drawn)
   };
 
-  // Non-Max Suppression (your existing function is fine, but I've added typing for TS)
+  // Non-Max Suppression, for filtering overlapping boxes based on IoU and confidence scores
   const nms = (
     boxes: number[][],
     scores: number[],
@@ -345,7 +343,7 @@ export default function App() {
 
       idxs = idxs.filter((j) => {
         const iou = boxIoU(boxes[i], boxes[j]);
-        return iou <= iouThreshold; // Note: <= for stricter, but < is fine too
+        return iou <= iouThreshold; // keep if IoU is low (not too overlapping)
       });
     }
 
@@ -369,25 +367,24 @@ export default function App() {
   // Start camera and inference on mount
   useEffect(() => {
     startCamera().then(() => loadModel().then(runLiveInference));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    //
+
     (async () => {
       try {
         workerRef.current = await Tesseract.createWorker("eng", 1, {
           workerPath:
-            "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js", // or @latest if you prefer
+            "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js",
           langPath:
-            "https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int", // or @latest
+            "https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int",
           corePath:
-            "https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js", // fallback to standard SIMD build
+            "https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js",
           logger: (m) => console.log(m), // optional progress logging
         });
 
         // Set global/default parameters once here (recommended for performance)
         await workerRef.current.setParameters({
           tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -",
-          tessedit_pageseg_mode: PSM.SINGLE_WORD, // PSM.SINGLE_WORD = 8 → best for license plates
-          // tessedit_pageseg_mode: '7', // PSM.SINGLE_LINE if plates have spaces/sections
+          tessedit_pageseg_mode: PSM.SINGLE_WORD, // PSM.SINGLE_WORD = 8 → best for license plates e.g NBC1234.
+          // tessedit_pageseg_mode: '7', // PSM.SINGLE_LINE if plates have spaces/sections e.g NBC 1234
           preserve_interword_spaces: "0", // usually good for plates
         });
 
