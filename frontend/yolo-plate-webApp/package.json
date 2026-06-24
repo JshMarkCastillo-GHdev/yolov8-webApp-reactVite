@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "validate:samples": "node scripts/validate-samples.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
