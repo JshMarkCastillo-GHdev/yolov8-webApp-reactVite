@@ -1,39 +1,50 @@
-import { useCallback, useEffect, useState } from "react";
-import logo from "./assets/Ultralytics YOLOv8.png";
-import { LiveCameraView } from "./features/camera/components/LiveCameraView";
-import { useYoloSession } from "./features/detection/hooks/useYoloSession";
-import { SampleGallery } from "./features/input/components/SampleGallery";
-import { UploadPanel } from "./features/input/components/UploadPanel";
-import { useTesseractWorker } from "./features/ocr/hooks/useTesseractWorker";
-import { ModeTabs } from "./features/plate-ui/components/ModeTabs";
-import { PlateAlert } from "./features/plate-ui/components/PlateAlert";
-import type { InputMode, PlateDetection } from "./shared/types/plate";
+import { useCallback, useState } from "react";
+import logo from "@/assets/Ultralytics YOLOv8.png";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { LiveCameraView } from "@/features/camera/components/LiveCameraView";
+import { useYoloSession } from "@/features/detection/hooks/useYoloSession";
+import { SampleSidebar } from "@/features/input/components/SampleSidebar";
+import { SampleView } from "@/features/input/components/SampleView";
+import { UploadPanel } from "@/features/input/components/UploadPanel";
+import { useSamples } from "@/features/input/hooks/useSamples";
+import { useTesseractWorker } from "@/features/ocr/hooks/useTesseractWorker";
+import { ModeTabs } from "@/features/plate-ui/components/ModeTabs";
+import { PlateAlert } from "@/features/plate-ui/components/PlateAlert";
+import { ThemeToggle } from "@/features/plate-ui/components/ThemeToggle";
+import type { InputMode, PlateDetection } from "@/shared/types/plate";
+import type { SampleEntry } from "@/shared/types/sample";
 
 const MODE_TITLES: Record<InputMode, string> = {
   camera: "Live detection",
   upload: "Upload image",
-  sample: "Sample gallery",
+  sample: "Sample detection",
 };
 
 export default function App() {
-  const [darkMode, setDarkMode] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>("camera");
   const [status, setStatus] = useState("initialising…");
   const [detectedPlate, setDetectedPlate] = useState<string | null>(null);
   const [detectedConf, setDetectedConf] = useState<number | null>(null);
+  const [activeSample, setActiveSample] = useState<SampleEntry | null>(null);
+  const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
 
-  const { session, status: modelStatus, setStatus: setModelStatus, ready: modelReady } =
-    useYoloSession();
+  const { samples, loading: samplesLoading } = useSamples();
+  const {
+    session,
+    status: modelStatus,
+    setStatus: setModelStatus,
+    ready: modelReady,
+  } = useYoloSession();
   const { worker, ready: ocrReady } = useTesseractWorker();
 
   const ready = modelReady && ocrReady;
-
-  useEffect(() => {
-    document.documentElement.setAttribute(
-      "data-theme",
-      darkMode ? "dark" : "light",
-    );
-  }, [darkMode]);
 
   const handleDetection = useCallback((detection: PlateDetection | null) => {
     setDetectedPlate(detection?.text ?? null);
@@ -41,9 +52,12 @@ export default function App() {
   }, []);
 
   const handleModeChange = (mode: InputMode) => {
+    if (mode === "sample") return;
     setInputMode(mode);
     setDetectedPlate(null);
     setDetectedConf(null);
+    setActiveSample(null);
+    setSelectedSampleId(null);
 
     if (mode === "camera") {
       setStatus(modelStatus);
@@ -52,6 +66,14 @@ export default function App() {
     } else {
       setStatus("ready");
     }
+  };
+
+  const handleSampleSelect = (sample: SampleEntry) => {
+    setInputMode("sample");
+    setSelectedSampleId(sample.id);
+    setActiveSample(sample);
+    setDetectedPlate(null);
+    setDetectedConf(null);
   };
 
   const handleCameraStatus = useCallback(
@@ -65,83 +87,80 @@ export default function App() {
   const emptyMessages: Record<InputMode, string> = {
     camera: "No plate recognised yet.",
     upload: "Upload an image to detect a plate.",
-    sample: "Select a sample image to detect a plate.",
+    sample: "Select a demo sample below.",
   };
 
+  const statusLine = inputMode === "camera" ? modelStatus : status;
+
   return (
-    <div className="min-h-screen flex flex-col bg-base-200">
-      <header className="navbar bg-base-100 shadow-md mb-4">
-        <div className="flex-1 px-2 mx-2">
-          <span className="text-lg font-bold">YOLO License Plate Detector</span>
-        </div>
-        <div className="flex-none space-x-2">
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() =>
-              window.open("https://github.com/JshMarkCastillo-GHdev", "_blank")
-            }
-          >
-            GitHub
-          </button>
-
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => setDarkMode((d) => !d)}
-            title="Toggle dark/light mode"
-          >
-            {darkMode ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m13.06-6.06l-.7.7M6.34 17.66l-.7.7m13.06 0l-.7-.7M6.34 6.34l-.7-.7M12 5a7 7 0 100 14 7 7 0 000-14z"
-                />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
-                />
-              </svg>
-            )}
-          </button>
-
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => window.location.reload()}
-          >
-            Reset
-          </button>
+    <div className="flex min-h-[100dvh] flex-col bg-muted/40">
+      <header className="sticky top-0 z-10 border-b bg-background/95 pt-[env(safe-area-inset-top)] shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="flex h-12 items-center justify-between gap-2 px-3 sm:h-14 sm:px-4 lg:px-6">
+          <span className="truncate text-base font-bold sm:text-lg">
+            <span className="sm:hidden">Plate Detector</span>
+            <span className="hidden sm:inline">YOLO License Plate Detector</span>
+          </span>
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="sm:hidden"
+              onClick={() =>
+                window.open("https://github.com/JshMarkCastillo-GHdev", "_blank")
+              }
+              aria-label="GitHub"
+            >
+              <span className="text-xs font-semibold">GH</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex"
+              onClick={() =>
+                window.open("https://github.com/JshMarkCastillo-GHdev", "_blank")
+              }
+            >
+              GitHub
+            </Button>
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="sm:hidden"
+              onClick={() => window.location.reload()}
+              aria-label="Reset"
+            >
+              <span className="text-xs">↺</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex"
+              onClick={() => window.location.reload()}
+            >
+              Reset
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className="grow container mx-auto px-4">
-        <div className="card bg-base-100 shadow-xl w-full max-w-3xl mx-auto">
-          <div className="card-body">
-            <h2 className="card-title">{MODE_TITLES[inputMode]}</h2>
-            <p className="text-sm text-gray-500 mb-2">
-              {inputMode === "camera" ? modelStatus : status}
-            </p>
-
-            <ModeTabs mode={inputMode} onChange={handleModeChange} />
-
-            <div className="mt-4">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <main className="order-1 flex min-h-0 flex-1 flex-col p-3 sm:p-4 lg:order-2 lg:p-6">
+          <Card className="flex min-h-0 flex-1 flex-col shadow-md">
+            <CardHeader className="shrink-0 space-y-3 p-4 sm:space-y-4 sm:p-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="min-w-0">
+                  <CardTitle className="text-lg sm:text-xl">
+                    {MODE_TITLES[inputMode]}
+                  </CardTitle>
+                  <CardDescription className="truncate">
+                    {statusLine}
+                  </CardDescription>
+                </div>
+                <ModeTabs mode={inputMode} onChange={handleModeChange} />
+              </div>
+            </CardHeader>
+            <CardContent className="flex min-h-0 flex-1 flex-col gap-3 p-4 pt-0 sm:gap-4 sm:p-6 sm:pt-0">
               {inputMode === "camera" && (
                 <LiveCameraView
                   session={session}
@@ -163,39 +182,46 @@ export default function App() {
               )}
 
               {inputMode === "sample" && (
-                <SampleGallery
+                <SampleView
                   session={session}
                   worker={worker}
                   ready={ready}
+                  activeSample={activeSample}
                   onStatus={setStatus}
                   onDetection={handleDetection}
                 />
               )}
-            </div>
 
-            <div className="mt-4">
               <PlateAlert
                 plate={detectedPlate}
                 confidence={detectedConf}
                 emptyMessage={emptyMessages[inputMode]}
               />
-            </div>
-          </div>
-        </div>
-      </main>
+            </CardContent>
+          </Card>
+        </main>
 
-      <footer className="footer p-4 bg-base-100 text-base-content">
-        <div className="items-center grid-flow-col">
-          <p className="ml-2 text-lg font-semibold">Powered By</p>
+        <SampleSidebar
+          samples={samples}
+          loading={samplesLoading}
+          selectedId={selectedSampleId}
+          disabled={!ready}
+          onSelect={handleSampleSelect}
+        />
+      </div>
 
-          <a
-            href="https://yolov8.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-ghost btn-sm ml-2 bg-white"
-          >
-            <img src={logo} alt="Ultralytics YOLOv8" className="w-20 h-6" />
-          </a>
+      <footer className="hidden border-t bg-background p-3 sm:block sm:p-4">
+        <div className="flex items-center gap-2 px-2 lg:px-4">
+          <p className="text-base font-semibold sm:text-lg">Powered By</p>
+          <Button variant="ghost" size="sm" className="bg-white" asChild>
+            <a
+              href="https://yolov8.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img src={logo} alt="Ultralytics YOLOv8" className="h-6 w-20" />
+            </a>
+          </Button>
         </div>
       </footer>
     </div>

@@ -1,3 +1,7 @@
+import { CheckCircle2 } from "lucide-react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
 type PlateAlertProps = {
   plate: string | null;
   confidence: number | null;
@@ -10,30 +14,16 @@ export function PlateAlert({
   emptyMessage = "No plate recognised yet.",
 }: PlateAlertProps) {
   if (!plate) {
-    return <p className="text-sm text-gray-500">{emptyMessage}</p>;
+    return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
   }
 
   return (
-    <div className="alert alert-success shadow-lg">
-      <div>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="stroke-current shrink-0 h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-        <span>
-          {plate}{" "}
-          {confidence !== null && `(${confidence.toFixed(0)}% confidence)`}
-        </span>
-      </div>
-    </div>
+    <Alert variant="success">
+      <CheckCircle2 className="h-4 w-4" />
+      <AlertDescription className="break-words">
+        {plate}{" "}
+        {confidence !== null && `(${confidence.toFixed(0)}% confidence)`}
+      </AlertDescription>
+    </Alert>
   );
 }

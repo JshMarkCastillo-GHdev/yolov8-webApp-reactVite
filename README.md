@@ -36,7 +36,7 @@ Built as a lightweight portfolio piece: train in Python, ship inference in the b
 | UI | React 19 | Single-page app |
 | Build | Vite 7 | Fast dev, static deploy |
 | Language | TypeScript (strict) | Already in use |
-| Styling | Tailwind CSS 4 + DaisyUI | Dark/light theme |
+| Styling | Tailwind CSS 4 + shadcn/ui | Radix primitives, dark/light via next-themes |
 | Detection | ONNX Runtime Web | Loaded via CDN in `index.html` |
 | OCR | Tesseract.js 7 | npm package (no CDN drift) |
 | Training (external) | Python / Ultralytics YOLOv8 | Not yet in this repo |
@@ -108,8 +108,8 @@ GitHub Actions runs on every push and pull request to `master` / `main`:
 | Verify output | — | `dist/index.html`, model, and manifest present |
 
 ```bash
-cd frontend/yolo-plate-webApp
-npm ci
+# From repo root
+npm install --prefix frontend/yolo-plate-webApp
 npm run lint
 npm run validate:samples
 npm run build
@@ -130,21 +130,33 @@ Workflow file: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
 ### Install & run
 
+From the **repo root** (recommended):
+
+```bash
+npm install --prefix frontend/yolo-plate-webApp
+npm run dev
+```
+
+Or from the app folder:
+
 ```bash
 cd frontend/yolo-plate-webApp
 npm install
 npm run dev
 ```
 
+> Root `package.json` delegates scripts to `frontend/yolo-plate-webApp`. Vercel and CI still use that folder as the app root — no deploy config change needed.
+
 Open the URL Vite prints (usually `http://localhost:5173`). **Camera** is the default tab; switch to **Upload** or **Samples** to test without a webcam.
 
 ### Build for production
 
 ```bash
-cd frontend/yolo-plate-webApp
-npm run build
-npm run preview   # optional local preview of dist/
+npm run build          # from repo root
+npm run preview        # optional local preview of dist/
 ```
+
+Or `cd frontend/yolo-plate-webApp` and run the same scripts there.
 
 Deploy the `dist/` folder to any static host — **Vercel is the recommended default** for this MVP (see below).
 

@@ -179,7 +179,7 @@ When a task touches multiple concerns, agents should frame work as if delegating
 | **PM** | Product Manager | Roadmap, portfolio narrative, scope cuts, “is this shippable?” | Adding features, migration decisions, prioritizing demo vs backend |
 | **QA** | Quality Assurance | Test plan, acceptance criteria, edge cases (no camera, bad lighting, mobile) | Changing detection thresholds, OCR rules, or release/deploy |
 | **FS** | Full-stack / Staff engineer | Architecture, monorepo vs single app, API design, performance budgets | Next.js migration, Turborepo setup, backend addition |
-| **FE** | Frontend engineer | React, canvas/video, Tailwind/DaisyUI, a11y, client perf | UI components, hooks, inference loop UX, WebGPU toggle |
+| **FE** | Frontend engineer | React, canvas/video, Tailwind/shadcn, a11y, client perf | UI components, hooks, inference loop UX, WebGPU toggle |
 | **BE** | Backend engineer | APIs, persistence, auth, batch jobs | Detection history, upload API, admin dashboard, rate limits |
 
 ### Escalation examples
@@ -221,8 +221,8 @@ If/when migrating to Next.js App Router:
 ## Quick commands
 
 ```bash
-cd frontend/yolo-plate-webApp
-npm install
+# From repo root (package.json delegates to frontend/yolo-plate-webApp)
+npm install --prefix frontend/yolo-plate-webApp
 npm run dev
 npm run lint
 npm run validate:samples

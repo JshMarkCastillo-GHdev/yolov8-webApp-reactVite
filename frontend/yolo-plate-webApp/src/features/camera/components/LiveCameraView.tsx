@@ -5,6 +5,7 @@ import type { BoundingBox, PlateDetection } from "../../../shared/types/plate";
 import { INFERENCE_INTERVAL_MS } from "../../detection/lib/constants";
 import { drawBox } from "../../detection/lib/drawOverlay";
 import { runDetection } from "../../detection/lib/runDetection";
+import { DetectionViewport } from "@/features/plate-ui/components/DetectionViewport";
 
 type LiveCameraViewProps = {
   session: OrtInferenceSession | null;
@@ -158,17 +159,17 @@ export function LiveCameraView({
   }, [active, session, worker, onStatus, onDetection]);
 
   return (
-    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+    <DetectionViewport className="[&_video]:h-full [&_video]:w-full [&_video]:object-cover">
       <video
         ref={videoRef}
-        className="w-full h-full object-cover"
+        className="absolute inset-0 h-full w-full object-cover"
         playsInline
         muted
       />
       <canvas
         ref={canvasRef}
-        className="absolute top-0 left-0 w-full h-full pointer-events-none"
+        className="absolute inset-0 h-full w-full pointer-events-none"
       />
-    </div>
+    </DetectionViewport>
   );
 }

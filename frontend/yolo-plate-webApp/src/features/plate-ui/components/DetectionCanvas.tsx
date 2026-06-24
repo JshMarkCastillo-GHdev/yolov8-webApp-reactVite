@@ -5,7 +5,7 @@ export const DetectionCanvas = forwardRef<HTMLCanvasElement>(
     return (
       <canvas
         ref={ref}
-        className="w-full h-full object-contain bg-black rounded-lg"
+        className="max-h-full max-w-full object-contain"
       />
     );
   },

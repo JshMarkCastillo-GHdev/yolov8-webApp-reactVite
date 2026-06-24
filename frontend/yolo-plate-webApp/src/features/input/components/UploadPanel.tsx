@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type Tesseract from "tesseract.js";
-import { getOrt, type OrtInferenceSession } from "../../../shared/lib/ort";
-import type { PlateDetection } from "../../../shared/types/plate";
-import { runDetection } from "../../detection/lib/runDetection";
-import { DetectionCanvas } from "../../plate-ui/components/DetectionCanvas";
+
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { getOrt, type OrtInferenceSession } from "@/shared/lib/ort";
+import type { PlateDetection } from "@/shared/types/plate";
+import { runDetection } from "@/features/detection/lib/runDetection";
+import { DetectionCanvas } from "@/features/plate-ui/components/DetectionCanvas";
+import { DetectionViewport } from "@/features/plate-ui/components/DetectionViewport";
 
 type UploadPanelProps = {
   session: OrtInferenceSession | null;
@@ -23,6 +27,7 @@ export function UploadPanel({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const [analysing, setAnalysing] = useState(false);
+  const [hasResult, setHasResult] = useState(false);
 
   const revokeObjectUrl = () => {
     if (objectUrlRef.current) {
@@ -41,6 +46,7 @@ export function UploadPanel({
 
     revokeObjectUrl();
     onDetection(null);
+    setHasResult(false);
     setAnalysing(true);
     onStatus("loading image…");
 
@@ -71,6 +77,7 @@ export function UploadPanel({
         canvas: canvasRef.current,
       });
 
+      setHasResult(true);
       onDetection(result);
       onStatus(result?.text ? "done" : "no plate detected");
     } catch (err) {
@@ -85,30 +92,37 @@ export function UploadPanel({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-base-content/70">
+      <p className="text-sm text-muted-foreground sm:text-base">
         Your image is processed in your browser and is not uploaded to any
         server.
       </p>
 
-      <input
+      <Input
         type="file"
         accept="image/*"
-        className="file-input file-input-bordered w-full max-w-md"
+        className="w-full max-w-none cursor-pointer text-base file:cursor-pointer sm:max-w-md"
         onChange={handleFileChange}
         disabled={!ready || analysing}
       />
 
-      <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center">
+      <DetectionViewport
+        overlay={
+          <>
+            {!analysing && !hasResult && (
+              <p className="absolute text-sm text-muted-foreground">
+                Select an image to analyse
+              </p>
+            )}
+            {analysing && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <Spinner />
+              </div>
+            )}
+          </>
+        }
+      >
         <DetectionCanvas ref={canvasRef} />
-        {!analysing && !canvasRef.current?.width && (
-          <p className="absolute text-sm text-gray-400">
-            Select an image to analyse
-          </p>
-        )}
-        {analysing && (
-          <span className="absolute loading loading-spinner loading-lg text-primary" />
-        )}
-      </div>
+      </DetectionViewport>
     </div>
   );
 }
