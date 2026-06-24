@@ -1,0 +1,26 @@
+[
+  {
+    "id": "ph-stock-01",
+    "src": "/samples/stock_ph_plates_1.png",
+    "title": "Clean plate — ABC 1230",
+    "expectedPlate": "ABC 1230",
+    "source": "stock",
+    "consent": true
+  },
+  {
+    "id": "ph-stock-02",
+    "src": "/samples/stock_ph_plates_2.png",
+    "title": "Vintage PH plate — CJA 910",
+    "expectedPlate": "CJA 910",
+    "source": "stock",
+    "consent": true
+  },
+  {
+    "id": "ph-stock-03",
+    "src": "/samples/stock_ph_plates_3.png",
+    "title": "Vintage PH plate — WPZ 225",
+    "expectedPlate": "WPZ 225",
+    "source": "stock",
+    "consent": true
+  }
+]
