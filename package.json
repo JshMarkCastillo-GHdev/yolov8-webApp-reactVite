@@ -1,0 +1,12 @@
+{
+  "name": "yolov8-webapp-reactvite",
+  "private": true,
+  "description": "Root scripts — app package lives in frontend/yolo-plate-webApp",
+  "scripts": {
+    "dev": "npm --prefix frontend/yolo-plate-webApp run dev",
+    "build": "npm --prefix frontend/yolo-plate-webApp run build",
+    "lint": "npm --prefix frontend/yolo-plate-webApp run lint",
+    "preview": "npm --prefix frontend/yolo-plate-webApp run preview",
+    "validate:samples": "npm --prefix frontend/yolo-plate-webApp run validate:samples"
+  }
+}
